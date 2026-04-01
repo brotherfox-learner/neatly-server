@@ -39,8 +39,8 @@ public class Faq {
 	@Column(columnDefinition = "text")
 	private String answer;
 
-	@JdbcTypeCode(SqlTypes.JSON)
-	@Column(columnDefinition = "jsonb")
+	@JdbcTypeCode(SqlTypes.ARRAY)
+	@Column(columnDefinition = "text[]")
 	private List<String> keywords = new ArrayList<>();
 
 	@Column(name = "is_active")

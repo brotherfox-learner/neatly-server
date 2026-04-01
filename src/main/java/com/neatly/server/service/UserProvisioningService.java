@@ -12,6 +12,7 @@ import com.neatly.server.domain.Profile;
 import com.neatly.server.domain.User;
 import com.neatly.server.repository.ProfileRepository;
 import com.neatly.server.repository.UserRepository;
+import com.neatly.server.security.SupabaseRoleResolver;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class UserProvisioningService {
 
 	private final UserRepository userRepository;
 	private final ProfileRepository profileRepository;
+	private final SupabaseRoleResolver supabaseRoleResolver;
 
 	@Transactional
 	public User ensureUserForJwt(Jwt jwt) {
@@ -67,7 +69,8 @@ public class UserProvisioningService {
 			last = "Member";
 		}
 
-		User user = User.provisionFromSupabaseAuth(id, email, "customer", SUPABASE_MANAGED_PASSWORD_PLACEHOLDER);
+		String role = supabaseRoleResolver.resolveRole(jwt);
+		User user = User.provisionFromSupabaseAuth(id, email, role, SUPABASE_MANAGED_PASSWORD_PLACEHOLDER);
 		userRepository.save(user);
 
 		Profile profile = new Profile();
