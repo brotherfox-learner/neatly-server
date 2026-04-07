@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+
 import com.neatly.server.domain.Profile;
 import com.neatly.server.domain.User;
 import com.neatly.server.repository.ProfileRepository;
@@ -19,20 +20,16 @@ import com.neatly.server.security.SupabaseRoleResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Ensures {@code public.users} and {@code public.profiles} rows exist for the Supabase JWT {@code sub}
- * (aligned with docs/sql.md).
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserProvisioningService {
 
-	static final String SUPABASE_MANAGED_PASSWORD_PLACEHOLDER = "";
+    static final String SUPABASE_MANAGED_PASSWORD_PLACEHOLDER = "";
 
-	private final UserRepository userRepository;
-	private final ProfileRepository profileRepository;
-	private final SupabaseRoleResolver supabaseRoleResolver;
+    private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
+    private final SupabaseRoleResolver supabaseRoleResolver;
 
 	@Transactional
 	public User ensureUserForJwt(Jwt jwt) {
@@ -80,13 +77,13 @@ public class UserProvisioningService {
 		});
 	}
 
-	private User createUserAndProfile(Jwt jwt, UUID id) {
-		String email = jwt.getClaimAsString("email");
-		if (!StringUtils.hasText(email)) {
-			email = id + "@users.supabase.local";
-		}
-		String first = jwt.getClaimAsString("given_name");
-		String last = jwt.getClaimAsString("family_name");
+    private User createUserAndProfile(Jwt jwt, UUID id) {
+        String email = jwt.getClaimAsString("email");
+        if (!StringUtils.hasText(email)) {
+            email = id + "@users.supabase.local";
+        }
+        String first = jwt.getClaimAsString("given_name");
+        String last = jwt.getClaimAsString("family_name");
 
 		Map<String, Object> meta = readUserMetadata(jwt);
 		log.info("Provisioning user={} user_metadata keys={} values={}", id,
@@ -135,9 +132,9 @@ public class UserProvisioningService {
 		}
 		profileRepository.save(profile);
 
-		log.info("Provisioned users + profiles id={} (first API call after Supabase Auth)", id);
-		return user;
-	}
+        log.info("Provisioned users + profiles id={} (first API call after Supabase Auth)", id);
+        return user;
+    }
 
 	private Map<String, Object> readUserMetadata(Jwt jwt) {
 		Object raw = jwt.getClaim("user_metadata");

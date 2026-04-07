@@ -71,12 +71,18 @@ public class Promotion {
 	@PrePersist
 	void prePersist() {
 		Instant now = Instant.now();
-		if (createdAt == null) {
+		if (createdAt == null)
 			createdAt = now;
-		}
-		if (updatedAt == null) {
+		if (updatedAt == null)
 			updatedAt = now;
-		}
+		if (perUserLimit == null)
+			perUserLimit = 1; // เพิ่ม
+		if (minSpend == null)
+			minSpend = BigDecimal.ZERO; // เพิ่ม
+		if (usedCount == null)
+			usedCount = 0; // เพิ่ม
+		if (isActive == null)
+			isActive = true; // เพิ่ม
 	}
 
 	@PreUpdate
