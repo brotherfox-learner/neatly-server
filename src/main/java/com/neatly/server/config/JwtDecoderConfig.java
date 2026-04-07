@@ -32,7 +32,7 @@ public class JwtDecoderConfig {
 		// HS256 is only for automated tests (see application-test.properties).
 		// Profile "local" is the default for spring-boot:run; real Supabase tokens require JWKS + issuer.
 		// If JWKS env is missing, do not fall back to HS256 under "local" — that makes every Supabase JWT fail with 401.
-		boolean hmacDevProfile = environment.acceptsProfiles(Profiles.of("test"));
+		boolean hmacDevProfile = environment.acceptsProfiles(Profiles.of("test", "local"));
 
 		if (StringUtils.hasText(jwksUrl)) {
 			if (!StringUtils.hasText(issuer)) {
@@ -63,6 +63,6 @@ public class JwtDecoderConfig {
 
 		throw new IllegalStateException(
 				"Set SUPABASE_JWKS_URL and SUPABASE_JWT_ISSUER for Supabase JWT verification (see rule.md). "
-						+ "HS256 via supabase.jwt.secret is only used when spring.profiles.active includes 'test'.");
+						+ "HS256 via supabase.jwt.secret is only used when spring.profiles.active includes 'test' or 'local'.");
 	}
 }
