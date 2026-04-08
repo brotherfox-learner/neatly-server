@@ -4,19 +4,15 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.UUID;
-
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
-
 import com.neatly.server.domain.Profile;
 import com.neatly.server.domain.User;
 import com.neatly.server.repository.ProfileRepository;
 import com.neatly.server.repository.UserRepository;
 import com.neatly.server.security.SupabaseRoleResolver;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,7 +40,8 @@ public class UserProvisioningService {
 
 	private void backfillProfileFromMetadata(Jwt jwt, UUID id) {
 		Map<String, Object> meta = readUserMetadata(jwt);
-		if (meta == null) return;
+		if (meta == null)
+			return;
 
 		profileRepository.findByUser_Id(id).ifPresent(profile -> {
 			boolean changed = false;
@@ -147,7 +144,8 @@ public class UserProvisioningService {
 	}
 
 	private static String metaString(Map<String, Object> meta, String key) {
-		if (meta == null) return null;
+		if (meta == null)
+			return null;
 		Object val = meta.get(key);
 		if (val instanceof String s && StringUtils.hasText(s)) {
 			return s.trim();
@@ -157,7 +155,8 @@ public class UserProvisioningService {
 
 	private static LocalDate metaDate(Map<String, Object> meta, String key) {
 		String raw = metaString(meta, key);
-		if (raw == null) return null;
+		if (raw == null)
+			return null;
 		try {
 			return LocalDate.parse(raw);
 		} catch (DateTimeParseException e) {

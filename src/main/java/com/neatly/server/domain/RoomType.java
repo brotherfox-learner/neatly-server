@@ -52,9 +52,6 @@ public class RoomType {
 	@Column(columnDefinition = "text[]")
 	private List<String> amenities = new ArrayList<>();
 
-	@Column(name = "discounted_price", precision = 12, scale = 2)
-	private BigDecimal discountedPrice;
-
 	@Column(name = "created_at")
 	private Instant createdAt;
 
