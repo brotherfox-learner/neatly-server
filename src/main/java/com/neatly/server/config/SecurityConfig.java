@@ -61,6 +61,7 @@ public class SecurityConfig {
 						.requestMatchers("/actuator/info", "/actuator/info/**").permitAll()
 						.requestMatchers("/api/v1/webhooks/stripe").permitAll()
 						.requestMatchers("/api/v1/extra-services").permitAll()
+						.requestMatchers("/api/v1/promotions/validate").permitAll()
 						.requestMatchers("/ws", "/ws/**").permitAll()
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())

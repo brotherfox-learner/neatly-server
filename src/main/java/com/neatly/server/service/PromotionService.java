@@ -7,7 +7,12 @@ import org.springframework.web.server.ResponseStatusException;
 import com.neatly.server.domain.Promotion;
 import com.neatly.server.dto.CreatePromotionRequest;
 import com.neatly.server.dto.PromotionResponse;
+import com.neatly.server.dto.ValidatePromoRequest;
+import com.neatly.server.dto.ValidatePromoResponse;
 import com.neatly.server.repository.PromotionRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.time.Instant;
 import java.util.UUID;
@@ -71,6 +76,52 @@ public class PromotionService {
                 .toList();
         log.info("[GET_PROMOTIONS][SUCCESS] count={}", result.size());
         return result;
+    }
+
+    public ValidatePromoResponse validatePromo(ValidatePromoRequest request) {
+        String code = request.code();
+        BigDecimal orderTotal = request.orderTotal() != null ? request.orderTotal() : BigDecimal.ZERO;
+
+        log.info("[VALIDATE_PROMO][START] code={} orderTotal={}", code, orderTotal);
+
+        Promotion promo = promotionRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code not found"));
+
+        if (!Boolean.TRUE.equals(promo.getIsActive())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code is inactive");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (promo.getStartDate() != null && today.isBefore(promo.getStartDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code is not yet valid");
+        }
+        if (promo.getEndDate() != null && today.isAfter(promo.getEndDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code has expired");
+        }
+
+        if (promo.getUsageLimit() != null && promo.getUsedCount() >= promo.getUsageLimit()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code usage limit reached");
+        }
+
+        BigDecimal minSpend = promo.getMinSpend() != null ? promo.getMinSpend() : BigDecimal.ZERO;
+        if (orderTotal.compareTo(minSpend) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Minimum spend of " + minSpend.toPlainString() + " required");
+        }
+
+        BigDecimal discountAmount;
+        if ("PERCENTAGE".equalsIgnoreCase(promo.getDiscountType())) {
+            discountAmount = orderTotal.multiply(promo.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            if (promo.getMaxDiscount() != null && discountAmount.compareTo(promo.getMaxDiscount()) > 0) {
+                discountAmount = promo.getMaxDiscount();
+            }
+        } else {
+            discountAmount = promo.getDiscountValue();
+        }
+
+        log.info("[VALIDATE_PROMO][SUCCESS] code={} discountAmount={}", code, discountAmount);
+        return new ValidatePromoResponse(promo.getCode(), discountAmount, promo.getDiscountType());
     }
 
     public PromotionResponse toggleActive(UUID id) {
