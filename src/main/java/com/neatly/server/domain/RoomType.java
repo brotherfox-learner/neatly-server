@@ -45,6 +45,9 @@ public class RoomType {
 	private BigDecimal basePrice;
 
 	/** Maps to PostgreSQL {@code text[]} — must match DB column type (not jsonb). */
+	@Column(name = "discounted_price", precision = 12, scale = 2)
+	private BigDecimal discountedPrice;
+
 	@JdbcTypeCode(SqlTypes.ARRAY)
 	@Column(columnDefinition = "text[]")
 	private List<String> amenities = new ArrayList<>();
