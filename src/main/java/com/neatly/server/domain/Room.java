@@ -1,5 +1,6 @@
 package com.neatly.server.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -39,6 +40,9 @@ public class Room {
 
 	@Column(name = "bed_type")
 	private String bedType;
+
+	@Column(name = "room_size_sqm", precision = 6, scale = 2)
+	private BigDecimal roomSizeSqm;
 
 	private Integer floor;
 
