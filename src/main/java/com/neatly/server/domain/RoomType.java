@@ -44,16 +44,13 @@ public class RoomType {
 	@Column(name = "base_price", nullable = false, precision = 12, scale = 2)
 	private BigDecimal basePrice;
 
-	/** Maps to PostgreSQL {@code text[]} — must match DB column type (not jsonb). */
 	@Column(name = "discounted_price", precision = 12, scale = 2)
 	private BigDecimal discountedPrice;
 
+	/** Maps to PostgreSQL {@code text[]} — must match DB column type (not jsonb). */
 	@JdbcTypeCode(SqlTypes.ARRAY)
 	@Column(columnDefinition = "text[]")
 	private List<String> amenities = new ArrayList<>();
-
-	@Column(name = "discounted_price", precision = 12, scale = 2)
-	private BigDecimal discountedPrice;
 
 	@Column(name = "created_at")
 	private Instant createdAt;
