@@ -64,11 +64,16 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/promotions/validate").permitAll()
 						.requestMatchers("/api/v1/public/**").permitAll()
 						.requestMatchers("/ws", "/ws/**").permitAll()
+						.requestMatchers("/api/v1/chat/presets", "/api/v1/chat/presets/**", "/api/v1/chat/search").permitAll()
+						.requestMatchers("/api/v1/chat/rooms/pending").hasRole("ADMIN")
+						.requestMatchers("/api/v1/chat/rooms/my-active").hasRole("ADMIN")
+						.requestMatchers("/api/v1/chat/rooms/*/accept").hasRole("ADMIN")
+						.requestMatchers("/api/v1/chat/rooms/*/leave").hasRole("ADMIN")
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
 				.addFilterAfter(userProvisioningFilter, BearerTokenAuthenticationFilter.class);
-		log.debug("SecurityFilterChain configured (stateless JWT, public health + Stripe webhook + /ws)");
+		log.debug("SecurityFilterChain configured (stateless JWT, public health + Stripe webhook + /ws + chat presets)");
 		return http.build();
 	}
 }

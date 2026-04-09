@@ -1,9 +1,12 @@
 package com.neatly.server.domain;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +45,13 @@ public class ChatMessage {
 
 	@Column(columnDefinition = "text")
 	private String message;
+
+	@Column(name = "message_type")
+	private String messageType = "TEXT";
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(columnDefinition = "jsonb")
+	private Map<String, Object> metadata;
 
 	@Column(name = "created_at")
 	private Instant createdAt;
