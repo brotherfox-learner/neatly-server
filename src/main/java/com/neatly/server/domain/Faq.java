@@ -1,8 +1,6 @@
 package com.neatly.server.domain;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -36,9 +34,10 @@ public class Faq {
 	@Column(columnDefinition = "text")
 	private String answer;
 
+	/** PostgreSQL {@code text[]} — use {@code String[]} so Hibernate persists updates reliably. */
 	@JdbcTypeCode(SqlTypes.ARRAY)
-	@Column(columnDefinition = "text[]")
-	private List<String> keywords = new ArrayList<>();
+	@Column(name = "keywords", columnDefinition = "text[]")
+	private String[] keywords = new String[0];
 
 	@Column(name = "is_active")
 	private Boolean isActive = true;

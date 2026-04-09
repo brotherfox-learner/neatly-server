@@ -64,7 +64,9 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/promotions/validate").permitAll()
 						.requestMatchers("/api/v1/public/**").permitAll()
 						.requestMatchers("/ws", "/ws/**").permitAll()
-						.requestMatchers("/api/v1/chat/presets", "/api/v1/chat/presets/**", "/api/v1/chat/search").permitAll()
+						.requestMatchers("/api/v1/chat/presets", "/api/v1/chat/presets/**", "/api/v1/chat/search",
+								"/api/v1/chat/defaults")
+								.permitAll()
 						.requestMatchers("/api/v1/chat/rooms/pending").hasRole("ADMIN")
 						.requestMatchers("/api/v1/chat/rooms/my-active").hasRole("ADMIN")
 						.requestMatchers("/api/v1/chat/rooms/*/accept").hasRole("ADMIN")
