@@ -1,6 +1,7 @@
 package com.neatly.server.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,8 @@ public interface FaqRepository extends JpaRepository<Faq, UUID> {
 	List<Faq> findByCategoryAndIsActiveTrueOrderBySortOrder(String category);
 
 	List<Faq> findByIsActiveTrue();
+
+	List<Faq> findByCategoryOrderBySortOrderAsc(String category);
+
+	Optional<Faq> findFirstByCategoryAndQuestion(String category, String question);
 }

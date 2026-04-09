@@ -11,12 +11,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.neatly.server.constant.ChatbotFaqKeys;
 import com.neatly.server.domain.ChatRoom;
 import com.neatly.server.domain.Faq;
 import com.neatly.server.domain.Promotion;
 import com.neatly.server.domain.RoomType;
 import com.neatly.server.domain.RoomTypeImage;
 import com.neatly.server.domain.User;
+import com.neatly.server.dto.ChatbotDefaultsDto;
 import com.neatly.server.dto.PresetAnswerDto;
 import com.neatly.server.dto.PresetQuestionDto;
 import com.neatly.server.repository.ChatRoomRepository;
@@ -71,22 +73,48 @@ public class ChatBotService {
 		List<Faq> activeFaqs = faqRepository.findByIsActiveTrue();
 
 		for (Faq faq : activeFaqs) {
-			// Check if any keyword is present in the query
-			if (faq.getKeywords() != null) {
-				for (String keyword : faq.getKeywords()) {
-					if (normalizedQuery.contains(keyword.toLowerCase())) {
+			if (ChatbotFaqKeys.CATEGORY_SETTINGS.equals(faq.getCategory())) {
+				continue;
+			}
+			String[] keywords = faq.getKeywords();
+			if (keywords != null && keywords.length > 0) {
+				for (String keyword : keywords) {
+					if (keywordMatches(normalizedQuery, keyword)) {
 						return getPresetAnswer(faq.getId());
 					}
 				}
 			}
-			
-			// Simple fallback check against the question text itself
-			if (faq.getQuestion() != null && normalizedQuery.contains(faq.getQuestion().toLowerCase())) {
-				return getPresetAnswer(faq.getId());
+
+			if (faq.getQuestion() != null) {
+				String q = faq.getQuestion().toLowerCase();
+				if (normalizedQuery.contains(q) || keywordMatches(normalizedQuery, faq.getQuestion())) {
+					return getPresetAnswer(faq.getId());
+				}
 			}
 		}
 
 		return null; // Return null if no match found
+	}
+
+	private static final String DEFAULT_GREETING = "Welcome to Neatly Hotel! 🌟 I'm your virtual assistant. "
+			+ "Choose a topic you'd like to know more about. I'm here to help! 😊";
+
+	private static final String DEFAULT_AUTO_REPLY = "Thanks for reaching out! If you need more help, call us at "
+			+ "029872345 — we're happy to assist you! 😊";
+
+	@Transactional(readOnly = true)
+	public ChatbotDefaultsDto getChatDefaults() {
+		String greeting = faqRepository
+				.findFirstByCategoryAndQuestion(ChatbotFaqKeys.CATEGORY_SETTINGS, ChatbotFaqKeys.QUESTION_GREETING)
+				.map(Faq::getAnswer)
+				.filter(s -> s != null && !s.isBlank())
+				.orElse(DEFAULT_GREETING);
+		String autoReply = faqRepository
+				.findFirstByCategoryAndQuestion(ChatbotFaqKeys.CATEGORY_SETTINGS, ChatbotFaqKeys.QUESTION_AUTO_REPLY)
+				.map(Faq::getAnswer)
+				.filter(s -> s != null && !s.isBlank())
+				.orElse(DEFAULT_AUTO_REPLY);
+		return new ChatbotDefaultsDto(greeting, autoReply);
 	}
 
 	/**
@@ -164,10 +192,8 @@ public class ChatBotService {
 		return new PresetAnswerDto(answer, faq.getResponseType(), null, options);
 	}
 
-	private PresetAnswerDto buildPromotionCardsAnswer(Faq faq) {
-		List<Promotion> promos = promotionRepository.findActivePromotions(LocalDate.now());
+	private List<Map<String, Object>> mapPromotionsToCards(List<Promotion> promos) {
 		List<Map<String, Object>> cards = new ArrayList<>();
-
 		for (Promotion p : promos) {
 			Map<String, Object> card = new HashMap<>();
 			card.put("id", p.getId().toString());
@@ -180,11 +206,59 @@ public class ChatBotService {
 			card.put("endDate", p.getEndDate() != null ? p.getEndDate().toString() : null);
 			cards.add(card);
 		}
+		return cards;
+	}
 
+	private PresetAnswerDto buildPromotionCardsAnswer(Faq faq) {
+		List<Promotion> promos = promotionRepository.findActivePromotions(LocalDate.now());
+		List<Map<String, Object>> cards = mapPromotionsToCards(promos);
+		String answer;
+		if (promos.isEmpty()) {
+			answer = "No promotions are currently available. Check back soon! 😊";
+		} else {
+			String faqAns = faq.getAnswer();
+			answer = faqAns != null && !faqAns.isBlank() ? faqAns : "🎉 Here are our current promotions!";
+		}
+		return new PresetAnswerDto(answer, faq.getResponseType(), cards, null);
+	}
+
+	/**
+	 * When no FAQ row exists for promotions, still return live promotion cards for the chat shortcut button.
+	 */
+	@Transactional(readOnly = true)
+	public PresetAnswerDto getPromotionPresetAnswer() {
+		return faqRepository.findByCategoryAndIsActiveTrueOrderBySortOrder("preset").stream()
+				.filter(f -> "promotion_cards".equals(f.getResponseType()))
+				.findFirst()
+				.map(this::getPresetAnswer)
+				.orElseGet(this::buildPromotionCardsAnswerStandalone);
+	}
+
+	private PresetAnswerDto buildPromotionCardsAnswerStandalone() {
+		List<Promotion> promos = promotionRepository.findActivePromotions(LocalDate.now());
+		List<Map<String, Object>> cards = mapPromotionsToCards(promos);
 		String answer = promos.isEmpty()
 				? "No promotions are currently available. Check back soon! 😊"
-				: faq.getAnswer();
+				: "🎉 Here are our current promotions!";
+		return new PresetAnswerDto(answer, "promotion_cards", cards, null);
+	}
 
-		return new PresetAnswerDto(answer, faq.getResponseType(), cards, null);
+	/**
+	 * Match guest message to a keyword or topic phrase: full substring either way, with a short-query
+	 * guard so typing "book" still matches a stored keyword "booking" (but not trivial single-letter noise).
+	 */
+	private boolean keywordMatches(String normalizedQuery, String keywordOrPhrase) {
+		if (keywordOrPhrase == null || keywordOrPhrase.isBlank()) {
+			return false;
+		}
+		String kw = keywordOrPhrase.toLowerCase().trim();
+		if (kw.isEmpty()) {
+			return false;
+		}
+		if (normalizedQuery.contains(kw)) {
+			return true;
+		}
+		final int minLen = 3;
+		return normalizedQuery.length() >= minLen && kw.contains(normalizedQuery);
 	}
 }

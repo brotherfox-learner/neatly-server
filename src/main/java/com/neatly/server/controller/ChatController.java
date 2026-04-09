@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.neatly.server.dto.ChatbotDefaultsDto;
 import com.neatly.server.dto.ChatMessageDto;
 import com.neatly.server.dto.ChatRoomDto;
 import com.neatly.server.dto.PresetAnswerDto;
@@ -42,6 +43,14 @@ public class ChatController {
 		return chatBotService.getPresetQuestions();
 	}
 
+	/**
+	 * Shortcut for the "Promotion" preset chip when no {@code promotion_cards} FAQ exists, or to reuse the same payload.
+	 */
+	@GetMapping("/presets/promotions")
+	public PresetAnswerDto getPromotionPresetAnswer() {
+		return chatBotService.getPromotionPresetAnswer();
+	}
+
 	@GetMapping("/presets/{id}/answer")
 	public PresetAnswerDto getPresetAnswer(@PathVariable UUID id) {
 		return chatBotService.getPresetAnswer(id);
@@ -54,6 +63,11 @@ public class ChatController {
 			return ResponseEntity.ok(answer);
 		}
 		return ResponseEntity.noContent().build();
+	}
+
+	@GetMapping("/defaults")
+	public ChatbotDefaultsDto getChatDefaults() {
+		return chatBotService.getChatDefaults();
 	}
 
 	// ─── Authenticated endpoints (chat rooms) ────────────────────
