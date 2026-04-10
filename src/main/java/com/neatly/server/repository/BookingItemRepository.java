@@ -1,0 +1,10 @@
+package com.neatly.server.repository;
+
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.neatly.server.domain.BookingItem;
+
+public interface BookingItemRepository extends JpaRepository<BookingItem, UUID> {
+}

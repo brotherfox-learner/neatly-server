@@ -15,4 +15,6 @@ public class ExtraServiceResponse {
     private String description;
     private String type;
     private BigDecimal price;
+    private String pricingType;
+    private String chargeUnit;
 }

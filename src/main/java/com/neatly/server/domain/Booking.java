@@ -36,6 +36,10 @@ public class Booking {
 	@JoinColumn(name = "user_id", nullable = false, columnDefinition = "uuid")
 	private User user;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "promotion_id", columnDefinition = "uuid")
+	private Promotion promotion;
+
 	@Column(name = "booking_reference", nullable = false, unique = true)
 	private String bookingReference;
 

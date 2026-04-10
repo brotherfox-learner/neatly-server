@@ -10,8 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.neatly.server.domain.PromotionUsage;
 import com.neatly.server.domain.WebhookEvent;
 import com.neatly.server.repository.BookingRepository;
+import com.neatly.server.repository.PromotionRepository;
+import com.neatly.server.repository.PromotionUsageRepository;
 import com.neatly.server.repository.WebhookEventRepository;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
@@ -27,14 +30,20 @@ public class StripeWebhookService {
 
 	private final WebhookEventRepository webhookEventRepository;
 	private final BookingRepository bookingRepository;
+	private final PromotionUsageRepository promotionUsageRepository;
+	private final PromotionRepository promotionRepository;
 	private final String webhookSecret;
 
 	public StripeWebhookService(
 			WebhookEventRepository webhookEventRepository,
 			BookingRepository bookingRepository,
+			PromotionUsageRepository promotionUsageRepository,
+			PromotionRepository promotionRepository,
 			@Value("${stripe.webhook-secret:}") String webhookSecret) {
 		this.webhookEventRepository = webhookEventRepository;
 		this.bookingRepository = bookingRepository;
+		this.promotionUsageRepository = promotionUsageRepository;
+		this.promotionRepository = promotionRepository;
 		this.webhookSecret = webhookSecret;
 	}
 
@@ -120,6 +129,20 @@ public class StripeWebhookService {
 					booking.setStatus(newStatus);
 					bookingRepository.save(booking);
 					log.info("[WEBHOOK] Updated booking id={} status={}", bookingId, newStatus);
+
+					// Record promotion usage when payment succeeded
+					if ("PAID".equals(newStatus) && booking.getPromotion() != null) {
+						PromotionUsage usage = new PromotionUsage();
+						usage.setPromotion(booking.getPromotion());
+						usage.setUser(booking.getUser());
+						usage.setBooking(booking);
+						promotionUsageRepository.save(usage);
+
+						booking.getPromotion().setUsedCount(booking.getPromotion().getUsedCount() + 1);
+						promotionRepository.save(booking.getPromotion());
+						log.info("[WEBHOOK] Recorded promotion usage promotionId={} userId={} bookingId={}",
+								booking.getPromotion().getId(), booking.getUser().getId(), bookingId);
+					}
 				},
 				() -> log.warn("[WEBHOOK] Booking not found for id={}", bookingId)
 		);

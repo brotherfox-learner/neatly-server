@@ -10,8 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.neatly.server.domain.Booking;
+import com.neatly.server.domain.PromotionUsage;
 import com.neatly.server.dto.CreatePaymentIntentResponse;
 import com.neatly.server.repository.BookingRepository;
+import com.neatly.server.repository.PromotionRepository;
+import com.neatly.server.repository.PromotionUsageRepository;
 import com.stripe.Stripe;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
@@ -28,6 +31,8 @@ public class PaymentService {
     private String stripeSecretKey;
 
     private final BookingRepository bookingRepository;
+    private final PromotionUsageRepository promotionUsageRepository;
+    private final PromotionRepository promotionRepository;
 
     public void updateStatus(UUID bookingId, String status) {
         log.info("[PAYMENT_STATUS][UPDATE] bookingId={} status={}", bookingId, status);
@@ -36,6 +41,24 @@ public class PaymentService {
         booking.setStatus(status);
         bookingRepository.save(booking);
         log.info("[PAYMENT_STATUS][DONE] bookingId={} newStatus={}", bookingId, status);
+
+        // บันทึก promotion usage ตอน PAID (frontend path)
+        // เช็ค duplicate ก่อนเพื่อป้องกัน insert ซ้ำกับ webhook
+        if ("PAID".equals(status) && booking.getPromotion() != null) {
+            if (!promotionUsageRepository.existsByBookingId(bookingId)) {
+                PromotionUsage usage = new PromotionUsage();
+                usage.setPromotion(booking.getPromotion());
+                usage.setUser(booking.getUser());
+                usage.setBooking(booking);
+                promotionUsageRepository.save(usage);
+                booking.getPromotion().setUsedCount(booking.getPromotion().getUsedCount() + 1);
+                promotionRepository.save(booking.getPromotion());
+                log.info("[PAYMENT_STATUS][PROMO_USAGE] promotionId={} userId={} bookingId={}",
+                        booking.getPromotion().getId(), booking.getUser().getId(), bookingId);
+            } else {
+                log.info("[PAYMENT_STATUS][PROMO_USAGE] already recorded for bookingId={}", bookingId);
+            }
+        }
     }
 
     public CreatePaymentIntentResponse createIntent(UUID bookingId) {

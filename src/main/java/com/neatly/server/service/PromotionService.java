@@ -10,6 +10,7 @@ import com.neatly.server.dto.PromotionResponse;
 import com.neatly.server.dto.ValidatePromoRequest;
 import com.neatly.server.dto.ValidatePromoResponse;
 import com.neatly.server.repository.PromotionRepository;
+import com.neatly.server.repository.PromotionUsageRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -26,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 public class PromotionService {
 
     private final PromotionRepository promotionRepository;
+    private final PromotionUsageRepository promotionUsageRepository;
+    private final CurrentUserService currentUserService;
 
     public PromotionResponse createPromotion(CreatePromotionRequest request) {
 
@@ -101,6 +104,16 @@ public class PromotionService {
 
         if (promo.getUsageLimit() != null && promo.getUsedCount() >= promo.getUsageLimit()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Promo code usage limit reached");
+        }
+
+        if (promo.getPerUserLimit() != null) {
+            java.util.UUID userId = currentUserService.currentUserId().orElse(null);
+            if (userId != null) {
+                int userUsageCount = promotionUsageRepository.countByPromotionIdAndUserId(promo.getId(), userId);
+                if (userUsageCount >= promo.getPerUserLimit()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You have already reached the usage limit for this promo code");
+                }
+            }
         }
 
         BigDecimal minSpend = promo.getMinSpend() != null ? promo.getMinSpend() : BigDecimal.ZERO;

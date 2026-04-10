@@ -23,7 +23,7 @@ public class ExtraServiceController {
     public ResponseEntity<List<ExtraServiceResponse>> getExtraServices() {
         List<ExtraServiceResponse> services = extraServiceRepository.findAllByIsActiveTrue()
                 .stream()
-                .map(s -> new ExtraServiceResponse(s.getId(), s.getName(), s.getDescription(), s.getType(), s.getPrice()))
+                .map(s -> new ExtraServiceResponse(s.getId(), s.getName(), s.getDescription(), s.getType(), s.getPrice(), s.getPricingType(), s.getChargeUnit()))
                 .toList();
 
         return ResponseEntity.ok(services);
