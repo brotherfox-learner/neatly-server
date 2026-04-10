@@ -51,6 +51,10 @@ public class Faq {
 	@Column(name = "response_type")
 	private String responseType = "text";
 
+	/** When false, preset is omitted from chat shortcut chips but still matches keywords / preset answer by id. */
+	@Column(name = "show_in_chat", nullable = false)
+	private Boolean showInChat = true;
+
 	@Column(name = "created_at")
 	private Instant createdAt;
 

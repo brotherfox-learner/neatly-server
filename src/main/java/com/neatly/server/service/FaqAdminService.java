@@ -3,6 +3,7 @@ package com.neatly.server.service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,7 +28,8 @@ public class FaqAdminService {
 			"text",
 			"room_cards",
 			"options",
-			"promotion_cards");
+			"promotion_cards",
+			"contact_admin");
 
 	private final FaqRepository faqRepository;
 	private final ChatBotService chatBotService;
@@ -54,42 +56,42 @@ public class FaqAdminService {
 
 	@Transactional
 	public FaqAdminDto createPreset(FaqWriteRequest req) {
-		if (req.question() == null || req.question().isBlank()) {
+		if (req.getQuestion() == null || req.getQuestion().isBlank()) {
 			throw new IllegalArgumentException("Topic (question) is required");
 		}
-		String responseType = normalizeResponseType(req.responseType());
+		String responseType = normalizeResponseType(req.getResponseType());
 		Faq f = new Faq();
 		f.setCategory(ChatbotFaqKeys.CATEGORY_PRESET);
-		f.setQuestion(req.question().trim());
-		f.setAnswer(req.answer() != null ? req.answer() : "");
-		f.setKeywords(toKeywordArray(req.keywords()));
+		f.setQuestion(req.getQuestion().trim());
+		f.setAnswer(req.getAnswer() != null ? req.getAnswer() : "");
+		f.setKeywords(toKeywordArray(req.getKeywords()));
 		f.setResponseType(responseType);
-		f.setIsActive(req.active() != null ? req.active() : Boolean.TRUE);
-		f.setSortOrder(req.sortOrder() != null ? req.sortOrder() : nextPresetSortOrder());
+		f.setIsActive(req.isActive());
+		f.setShowInChat(req.isShowInChat());
+		f.setSortOrder(req.getSortOrder() != null ? req.getSortOrder() : nextPresetSortOrder());
 		return toDto(faqRepository.save(f));
 	}
 
 	@Transactional
 	public FaqAdminDto updatePreset(UUID id, FaqWriteRequest req) {
 		Faq f = loadPresetOrThrow(id);
-		if (req.question() != null && !req.question().isBlank()) {
-			f.setQuestion(req.question().trim());
+		if (req.getQuestion() != null && !req.getQuestion().isBlank()) {
+			f.setQuestion(req.getQuestion().trim());
 		}
-		if (req.answer() != null) {
-			f.setAnswer(req.answer());
+		if (req.getAnswer() != null) {
+			f.setAnswer(req.getAnswer());
 		}
-		if (req.keywords() != null) {
-			f.setKeywords(toKeywordArray(req.keywords()));
+		if (req.getKeywords() != null) {
+			f.setKeywords(toKeywordArray(req.getKeywords()));
 		}
-		if (req.responseType() != null) {
-			f.setResponseType(normalizeResponseType(req.responseType()));
+		if (req.getResponseType() != null) {
+			f.setResponseType(normalizeResponseType(req.getResponseType()));
 		}
-		if (req.sortOrder() != null) {
-			f.setSortOrder(req.sortOrder());
+		if (req.getSortOrder() != null) {
+			f.setSortOrder(req.getSortOrder());
 		}
-		if (req.active() != null) {
-			f.setIsActive(req.active());
-		}
+		f.setIsActive(req.isActive());
+		f.setShowInChat(req.isShowInChat());
 		return toDto(faqRepository.save(f));
 	}
 
@@ -124,6 +126,7 @@ public class FaqAdminService {
 		f.setKeywords(new String[0]);
 		f.setResponseType("text");
 		f.setIsActive(true);
+		f.setShowInChat(true);
 		f.setSortOrder(0);
 		return f;
 	}
@@ -139,9 +142,9 @@ public class FaqAdminService {
 		if (raw == null || raw.isBlank()) {
 			return "text";
 		}
-		String t = raw.trim();
+		String t = raw.trim().toLowerCase(Locale.ROOT).replace('-', '_');
 		if (!ALLOWED_RESPONSE_TYPES.contains(t)) {
-			throw new IllegalArgumentException("Invalid responseType: " + t);
+			throw new IllegalArgumentException("Invalid responseType: " + raw.trim());
 		}
 		return t;
 	}
@@ -167,6 +170,7 @@ public class FaqAdminService {
 				f.getAnswer() != null ? f.getAnswer() : "",
 				keywordsAsList(f.getKeywords()),
 				Boolean.TRUE.equals(f.getIsActive()),
+				!Boolean.FALSE.equals(f.getShowInChat()),
 				f.getCategory() != null ? f.getCategory() : "general",
 				f.getSortOrder() != null ? f.getSortOrder() : 0,
 				f.getResponseType() != null ? f.getResponseType() : "text");
