@@ -9,6 +9,7 @@ public record FaqAdminDto(
 		String answer,
 		List<String> keywords,
 		boolean active,
+		boolean showInChat,
 		String category,
 		int sortOrder,
 		String responseType) {

@@ -44,6 +44,7 @@ public class ChatBotService {
 	public List<PresetQuestionDto> getPresetQuestions() {
 		return faqRepository.findByCategoryAndIsActiveTrueOrderBySortOrder("preset")
 				.stream()
+				.filter(faq -> !Boolean.FALSE.equals(faq.getShowInChat()))
 				.map(faq -> new PresetQuestionDto(faq.getId(), faq.getQuestion(), faq.getResponseType()))
 				.toList();
 	}
@@ -59,6 +60,10 @@ public class ChatBotService {
 			case "room_cards" -> buildRoomCardsAnswer(faq);
 			case "options" -> buildOptionsAnswer(faq);
 			case "promotion_cards" -> buildPromotionCardsAnswer(faq);
+			case "contact_admin" -> {
+				String intro = faq.getAnswer() != null ? faq.getAnswer() : "";
+				yield new PresetAnswerDto(intro, "contact_admin", null, null);
+			}
 			default -> new PresetAnswerDto(faq.getAnswer(), responseType, null, null);
 		};
 	}
