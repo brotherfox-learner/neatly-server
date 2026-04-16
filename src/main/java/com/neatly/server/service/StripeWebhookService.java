@@ -1,6 +1,7 @@
 package com.neatly.server.service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -9,10 +10,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.neatly.server.domain.PromotionUsage;
 import com.neatly.server.domain.WebhookEvent;
+import com.neatly.server.repository.BookingRepository;
+import com.neatly.server.repository.PromotionRepository;
+import com.neatly.server.repository.PromotionUsageRepository;
 import com.neatly.server.repository.WebhookEventRepository;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.StripeObject;
 import com.stripe.net.Webhook;
 
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +29,21 @@ import lombok.extern.slf4j.Slf4j;
 public class StripeWebhookService {
 
 	private final WebhookEventRepository webhookEventRepository;
+	private final BookingRepository bookingRepository;
+	private final PromotionUsageRepository promotionUsageRepository;
+	private final PromotionRepository promotionRepository;
 	private final String webhookSecret;
 
 	public StripeWebhookService(
 			WebhookEventRepository webhookEventRepository,
+			BookingRepository bookingRepository,
+			PromotionUsageRepository promotionUsageRepository,
+			PromotionRepository promotionRepository,
 			@Value("${stripe.webhook-secret:}") String webhookSecret) {
 		this.webhookEventRepository = webhookEventRepository;
+		this.bookingRepository = bookingRepository;
+		this.promotionUsageRepository = promotionUsageRepository;
+		this.promotionRepository = promotionRepository;
 		this.webhookSecret = webhookSecret;
 	}
 
@@ -75,5 +91,60 @@ public class StripeWebhookService {
 			log.error("Failed to persist webhook_events", e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to persist webhook.");
 		}
+
+		// Process booking status update based on event type
+		handleBookingStatusUpdate(event);
+	}
+
+	private void handleBookingStatusUpdate(Event event) {
+		String eventType = event.getType();
+		if (!"payment_intent.succeeded".equals(eventType) && !"payment_intent.payment_failed".equals(eventType)) {
+			return;
+		}
+
+		StripeObject stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+		if (!(stripeObject instanceof PaymentIntent paymentIntent)) {
+			log.warn("[WEBHOOK] Could not deserialize PaymentIntent for event={}", event.getId());
+			return;
+		}
+
+		String bookingIdStr = paymentIntent.getMetadata().get("bookingId");
+		if (!StringUtils.hasText(bookingIdStr)) {
+			log.warn("[WEBHOOK] No bookingId in PaymentIntent metadata, intentId={}", paymentIntent.getId());
+			return;
+		}
+
+		UUID bookingId;
+		try {
+			bookingId = UUID.fromString(bookingIdStr);
+		} catch (IllegalArgumentException e) {
+			log.warn("[WEBHOOK] Invalid bookingId format={}", bookingIdStr);
+			return;
+		}
+
+		String newStatus = "payment_intent.succeeded".equals(eventType) ? "PAID" : "FAILED";
+
+		bookingRepository.findById(bookingId).ifPresentOrElse(
+				booking -> {
+					booking.setStatus(newStatus);
+					bookingRepository.save(booking);
+					log.info("[WEBHOOK] Updated booking id={} status={}", bookingId, newStatus);
+
+					// Record promotion usage when payment succeeded
+					if ("PAID".equals(newStatus) && booking.getPromotion() != null) {
+						PromotionUsage usage = new PromotionUsage();
+						usage.setPromotion(booking.getPromotion());
+						usage.setUser(booking.getUser());
+						usage.setBooking(booking);
+						promotionUsageRepository.save(usage);
+
+						booking.getPromotion().setUsedCount(booking.getPromotion().getUsedCount() + 1);
+						promotionRepository.save(booking.getPromotion());
+						log.info("[WEBHOOK] Recorded promotion usage promotionId={} userId={} bookingId={}",
+								booking.getPromotion().getId(), booking.getUser().getId(), bookingId);
+					}
+				},
+				() -> log.warn("[WEBHOOK] Booking not found for id={}", bookingId)
+		);
 	}
 }

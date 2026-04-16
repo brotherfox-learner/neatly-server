@@ -4,35 +4,28 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.UUID;
-
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
 import com.neatly.server.domain.Profile;
 import com.neatly.server.domain.User;
 import com.neatly.server.repository.ProfileRepository;
 import com.neatly.server.repository.UserRepository;
 import com.neatly.server.security.SupabaseRoleResolver;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Ensures {@code public.users} and {@code public.profiles} rows exist for the Supabase JWT {@code sub}
- * (aligned with docs/sql.md).
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserProvisioningService {
 
-	static final String SUPABASE_MANAGED_PASSWORD_PLACEHOLDER = "";
+    static final String SUPABASE_MANAGED_PASSWORD_PLACEHOLDER = "";
 
-	private final UserRepository userRepository;
-	private final ProfileRepository profileRepository;
-	private final SupabaseRoleResolver supabaseRoleResolver;
+    private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
+    private final SupabaseRoleResolver supabaseRoleResolver;
 
 	@Transactional
 	public User ensureUserForJwt(Jwt jwt) {
@@ -47,7 +40,8 @@ public class UserProvisioningService {
 
 	private void backfillProfileFromMetadata(Jwt jwt, UUID id) {
 		Map<String, Object> meta = readUserMetadata(jwt);
-		if (meta == null) return;
+		if (meta == null)
+			return;
 
 		profileRepository.findByUser_Id(id).ifPresent(profile -> {
 			boolean changed = false;
@@ -80,13 +74,13 @@ public class UserProvisioningService {
 		});
 	}
 
-	private User createUserAndProfile(Jwt jwt, UUID id) {
-		String email = jwt.getClaimAsString("email");
-		if (!StringUtils.hasText(email)) {
-			email = id + "@users.supabase.local";
-		}
-		String first = jwt.getClaimAsString("given_name");
-		String last = jwt.getClaimAsString("family_name");
+    private User createUserAndProfile(Jwt jwt, UUID id) {
+        String email = jwt.getClaimAsString("email");
+        if (!StringUtils.hasText(email)) {
+            email = id + "@users.supabase.local";
+        }
+        String first = jwt.getClaimAsString("given_name");
+        String last = jwt.getClaimAsString("family_name");
 
 		Map<String, Object> meta = readUserMetadata(jwt);
 		log.info("Provisioning user={} user_metadata keys={} values={}", id,
@@ -135,9 +129,9 @@ public class UserProvisioningService {
 		}
 		profileRepository.save(profile);
 
-		log.info("Provisioned users + profiles id={} (first API call after Supabase Auth)", id);
-		return user;
-	}
+        log.info("Provisioned users + profiles id={} (first API call after Supabase Auth)", id);
+        return user;
+    }
 
 	private Map<String, Object> readUserMetadata(Jwt jwt) {
 		Object raw = jwt.getClaim("user_metadata");
@@ -150,7 +144,8 @@ public class UserProvisioningService {
 	}
 
 	private static String metaString(Map<String, Object> meta, String key) {
-		if (meta == null) return null;
+		if (meta == null)
+			return null;
 		Object val = meta.get(key);
 		if (val instanceof String s && StringUtils.hasText(s)) {
 			return s.trim();
@@ -160,7 +155,8 @@ public class UserProvisioningService {
 
 	private static LocalDate metaDate(Map<String, Object> meta, String key) {
 		String raw = metaString(meta, key);
-		if (raw == null) return null;
+		if (raw == null)
+			return null;
 		try {
 			return LocalDate.parse(raw);
 		} catch (DateTimeParseException e) {

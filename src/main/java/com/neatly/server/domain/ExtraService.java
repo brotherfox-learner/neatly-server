@@ -40,6 +40,12 @@ public class ExtraService {
 	@Column(precision = 12, scale = 2)
 	private BigDecimal price = BigDecimal.ZERO;
 
+	@Column(name = "pricing_type", nullable = false)
+	private String pricingType = "per_stay";
+
+	@Column(name = "charge_unit", nullable = false)
+	private String chargeUnit = "per_room";
+
 	@Column(name = "is_active")
 	private Boolean isActive = true;
 
