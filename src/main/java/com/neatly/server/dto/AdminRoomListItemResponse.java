@@ -6,6 +6,8 @@ import java.util.UUID;
 
 public record AdminRoomListItemResponse(
 		UUID roomId,
+		String roomNumber,
+		String status,
 		String imageUrl,
 		String roomType,
 		BigDecimal price,

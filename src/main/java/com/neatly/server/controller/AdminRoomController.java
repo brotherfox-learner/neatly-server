@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import com.neatly.server.dto.AdminCreateRoomRequest;
 import com.neatly.server.dto.AdminCreateRoomResponse;
 import com.neatly.server.dto.AdminRoomDetailResponse;
 import com.neatly.server.dto.AdminRoomListItemResponse;
+import com.neatly.server.dto.AdminUpdateRoomStatusRequest;
 import com.neatly.server.dto.RoomImageUploadResponse;
 import com.neatly.server.service.AdminRoomService;
 
@@ -55,6 +57,11 @@ public class AdminRoomController {
 	@PutMapping("/{roomId}")
 	public AdminRoomDetailResponse update(@PathVariable UUID roomId, @Valid @RequestBody AdminCreateRoomRequest request) {
 		return adminRoomService.updateRoom(roomId, request);
+	}
+
+	@PatchMapping("/{roomId}/status")
+	public void updateStatus(@PathVariable UUID roomId, @Valid @RequestBody AdminUpdateRoomStatusRequest request) {
+		adminRoomService.updateRoomStatus(roomId, request.status());
 	}
 
 	@DeleteMapping("/{roomId}")

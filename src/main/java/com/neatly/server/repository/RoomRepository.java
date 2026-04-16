@@ -33,4 +33,15 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
 			@Param("roomTypeId") UUID roomTypeId,
 			@Param("checkIn") LocalDate checkIn,
 			@Param("checkOut") LocalDate checkOut);
+	/** Active rooms ordered by display room number (matches `rooms.room_number`). */
+	java.util.List<Room> findByDeletedAtIsNullOrderByRoomNumberAsc();
+
+	java.util.Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
+
+	/** Active rooms ordered by display room number (matches `rooms.room_number`). */
+	java.util.List<Room> findByDeletedAtIsNullOrderByRoomNumberAsc();
+
+	java.util.Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
+
+	long countByRoomType_Id(UUID roomTypeId);
 }
