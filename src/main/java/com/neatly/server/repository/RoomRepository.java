@@ -2,6 +2,7 @@ package com.neatly.server.repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +15,7 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
 
 	List<Room> findByDeletedAtIsNullOrderByUpdatedAtDesc();
 
-	java.util.Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
+	Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
 
 	@Query("""
 			SELECT r FROM Room r
@@ -33,15 +34,9 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
 			@Param("roomTypeId") UUID roomTypeId,
 			@Param("checkIn") LocalDate checkIn,
 			@Param("checkOut") LocalDate checkOut);
-	/** Active rooms ordered by display room number (matches `rooms.room_number`). */
-	java.util.List<Room> findByDeletedAtIsNullOrderByRoomNumberAsc();
-
-	java.util.Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
 
 	/** Active rooms ordered by display room number (matches `rooms.room_number`). */
-	java.util.List<Room> findByDeletedAtIsNullOrderByRoomNumberAsc();
-
-	java.util.Optional<Room> findByIdAndDeletedAtIsNull(UUID id);
+	List<Room> findByDeletedAtIsNullOrderByRoomNumberAsc();
 
 	long countByRoomType_Id(UUID roomTypeId);
 }
