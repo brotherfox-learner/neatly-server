@@ -93,11 +93,11 @@ class AdminRoomServiceTest {
 		verify(roomTypeImageRepository, org.mockito.Mockito.times(5)).save(imageCaptor.capture());
 		List<RoomTypeImage> savedImages = imageCaptor.getAllValues();
 
-		assertEquals(true, savedImages.get(0).getIsPrimary());
+		assertEquals(true, savedImages.get(0).getPrimary());
 		assertEquals(0, savedImages.get(0).getSortOrder());
 		assertEquals("https://cdn/main.jpg", savedImages.get(0).getImageUrl());
 
-		assertEquals(false, savedImages.get(1).getIsPrimary());
+		assertEquals(false, savedImages.get(1).getPrimary());
 		assertEquals(1, savedImages.get(1).getSortOrder());
 		assertEquals("https://cdn/g1.jpg", savedImages.get(1).getImageUrl());
 		assertEquals(4, savedImages.get(4).getSortOrder());
