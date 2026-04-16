@@ -35,7 +35,7 @@ public class RoomTypeImage {
 	private String imageUrl;
 
 	@Column(name = "is_primary")
-	private Boolean isPrimary = false;
+	private Boolean primary = false;
 
 	@Column(name = "sort_order")
 	private Integer sortOrder = 0;

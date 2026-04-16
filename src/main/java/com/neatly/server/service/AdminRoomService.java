@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,21 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminRoomService {
 
+	private static final Set<String> ALLOWED_ROOM_STATUSES = Set.of(
+			"Vacant",
+			"Occupied",
+			"Assign Clean",
+			"Assign Dirty",
+			"Vacant Clean",
+			"Vacant Clean Inspected",
+			"Vacant Clean Pick Up",
+			"Occupied Clean",
+			"Occupied Clean Inspected",
+			"Occupied Dirty",
+			"Out of Order",
+			"Out of Service",
+			"Out of Inventory");
+
 	private final RoomTypeRepository roomTypeRepository;
 	private final RoomRepository roomRepository;
 	private final RoomTypeImageRepository roomTypeImageRepository;
@@ -45,16 +62,21 @@ public class AdminRoomService {
 
 	@Transactional(readOnly = true)
 	public List<AdminRoomListItemResponse> listRooms() {
-		return roomRepository.findByDeletedAtIsNullOrderByUpdatedAtDesc().stream()
+		return roomRepository.findByDeletedAtIsNullOrderByRoomNumberAsc().stream()
 				.map(room -> {
 					RoomType roomType = room.getRoomType();
 					String imageUrl = roomTypeImageRepository
-							.findFirstByRoomType_IdAndIsPrimaryTrueOrderBySortOrderAsc(roomType.getId())
+							.findFirstByRoomType_IdAndPrimaryTrueOrderBySortOrderAsc(roomType.getId())
 							.or(() -> roomTypeImageRepository.findFirstByRoomType_IdOrderBySortOrderAsc(roomType.getId()))
 							.map(RoomTypeImage::getImageUrl)
 							.orElse("");
+					String status = room.getStatus() == null || room.getStatus().isBlank()
+							? "Vacant Clean"
+							: room.getStatus();
 					return new AdminRoomListItemResponse(
 							room.getId(),
+							room.getRoomNumber(),
+							status,
 							imageUrl,
 							roomType.getName(),
 							roomType.getBasePrice(),
@@ -67,20 +89,36 @@ public class AdminRoomService {
 				.toList();
 	}
 
+	@Transactional
+	public void updateRoomStatus(UUID roomId, String status) {
+		if (status == null || status.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status is required.");
+		}
+		String trimmed = status.trim();
+		if (!ALLOWED_ROOM_STATUSES.contains(trimmed)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid room status.");
+		}
+		Room room = roomRepository.findByIdAndDeletedAtIsNull(roomId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+		room.setStatus(trimmed);
+		roomRepository.save(room);
+	}
+
 	@Transactional(readOnly = true)
 	public AdminRoomDetailResponse getRoomDetail(UUID roomId) {
 		Room room = roomRepository.findByIdAndDeletedAtIsNull(roomId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
 		RoomType roomType = room.getRoomType();
 		List<RoomTypeImage> images = roomTypeImageRepository.findByRoomType_IdOrderBySortOrderAsc(roomType.getId());
-		String mainImageUrl = images.stream()
-				.filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+		RoomTypeImage mainImage = images.stream()
+				.filter(img -> Boolean.TRUE.equals(img.getPrimary()))
 				.findFirst()
-				.or(() -> images.stream().findFirst())
-				.map(RoomTypeImage::getImageUrl)
-				.orElse("");
+				.orElseGet(() -> images.stream().findFirst().orElse(null));
+		String mainImageUrl = mainImage != null ? mainImage.getImageUrl() : "";
+		// Use every remaining image as gallery (exclude only the selected main image row).
+		// This keeps legacy/migrated data working even when is_primary flags are inconsistent.
 		List<String> galleryImageUrls = images.stream()
-				.filter(img -> !Boolean.TRUE.equals(img.getIsPrimary()))
+				.filter(img -> mainImage == null || !img.getId().equals(mainImage.getId()))
 				.sorted(Comparator.comparing(img -> img.getSortOrder() == null ? Integer.MAX_VALUE : img.getSortOrder()))
 				.map(RoomTypeImage::getImageUrl)
 				.toList();
@@ -159,15 +197,30 @@ public class AdminRoomService {
 	public void deleteRoom(UUID roomId) {
 		Room room = roomRepository.findByIdAndDeletedAtIsNull(roomId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
-		room.setDeletedAt(Instant.now());
-		roomRepository.save(room);
+		RoomType roomType = room.getRoomType();
+		try {
+			// Prefer hard delete so the row is truly removed from rooms.
+			roomRepository.delete(room);
+			roomRepository.flush();
+		} catch (DataIntegrityViolationException ex) {
+			// Fallback to soft delete when the room is referenced elsewhere (e.g. booking_items FK).
+			room.setDeletedAt(Instant.now());
+			roomRepository.save(room);
+			return;
+		}
+
+		long remainingRooms = roomRepository.countByRoomType_Id(roomType.getId());
+		if (remainingRooms == 0) {
+			roomTypeImageRepository.deleteByRoomType_Id(roomType.getId());
+			roomTypeRepository.deleteById(roomType.getId());
+		}
 	}
 
 	private void createRoomTypeImages(RoomType roomType, String mainImageUrl, List<String> galleryImageUrls) {
 		RoomTypeImage mainImage = new RoomTypeImage();
 		mainImage.setRoomType(roomType);
 		mainImage.setImageUrl(mainImageUrl.trim());
-		mainImage.setIsPrimary(true);
+		mainImage.setPrimary(true);
 		mainImage.setSortOrder(0);
 		roomTypeImageRepository.save(mainImage);
 
@@ -175,7 +228,7 @@ public class AdminRoomService {
 			RoomTypeImage galleryImage = new RoomTypeImage();
 			galleryImage.setRoomType(roomType);
 			galleryImage.setImageUrl(galleryImageUrls.get(i).trim());
-			galleryImage.setIsPrimary(false);
+			galleryImage.setPrimary(false);
 			galleryImage.setSortOrder(i + 1);
 			roomTypeImageRepository.save(galleryImage);
 		}
