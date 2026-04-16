@@ -1,8 +1,6 @@
 package com.neatly.server.domain;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -11,10 +9,7 @@ import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
@@ -39,16 +34,26 @@ public class Faq {
 	@Column(columnDefinition = "text")
 	private String answer;
 
-	@JdbcTypeCode(SqlTypes.JSON)
-	@Column(columnDefinition = "jsonb")
-	private List<String> keywords = new ArrayList<>();
+	/** PostgreSQL {@code text[]} — use {@code String[]} so Hibernate persists updates reliably. */
+	@JdbcTypeCode(SqlTypes.ARRAY)
+	@Column(name = "keywords", columnDefinition = "text[]")
+	private String[] keywords = new String[0];
 
 	@Column(name = "is_active")
 	private Boolean isActive = true;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "created_by", columnDefinition = "uuid")
-	private User createdBy;
+	@Column
+	private String category = "general";
+
+	@Column(name = "sort_order")
+	private Integer sortOrder = 0;
+
+	@Column(name = "response_type")
+	private String responseType = "text";
+
+	/** When false, preset is omitted from chat shortcut chips but still matches keywords / preset answer by id. */
+	@Column(name = "show_in_chat", nullable = false)
+	private Boolean showInChat = true;
 
 	@Column(name = "created_at")
 	private Instant createdAt;

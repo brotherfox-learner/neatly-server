@@ -27,4 +27,15 @@ public class CurrentUserService {
 		}
 		return Optional.empty();
 	}
+
+	public String requireAccessToken() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+			String token = jwtAuth.getToken().getTokenValue();
+			if (token != null && !token.isBlank()) {
+				return token;
+			}
+		}
+		throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+	}
 }

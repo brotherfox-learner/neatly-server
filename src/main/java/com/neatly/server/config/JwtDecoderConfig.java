@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -28,6 +29,9 @@ public class JwtDecoderConfig {
 			@Value("${supabase.jwks.url:}") String jwksUrl,
 			@Value("${supabase.jwt.issuer:}") String issuer,
 			@Value("${supabase.jwt.secret:}") String jwtSecret) {
+		// HS256 is only for automated tests (see application-test.properties).
+		// Profile "local" is the default for spring-boot:run; real Supabase tokens require JWKS + issuer.
+		// If JWKS env is missing, do not fall back to HS256 under "local" — that makes every Supabase JWT fail with 401.
 		boolean hmacDevProfile = environment.acceptsProfiles(Profiles.of("test", "local"));
 
 		if (StringUtils.hasText(jwksUrl)) {
@@ -35,8 +39,11 @@ public class JwtDecoderConfig {
 				throw new IllegalStateException(
 						"SUPABASE_JWT_ISSUER is required when SUPABASE_JWKS_URL is set (Neatly rule.md: verify via JWKS + issuer).");
 			}
-			log.info("JWT decoder: JWKS + issuer validation");
-			NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUrl.trim()).build();
+			log.info("JWT decoder: JWKS + issuer validation (ES256)");
+			NimbusJwtDecoder decoder = NimbusJwtDecoder
+					.withJwkSetUri(jwksUrl.trim())
+					.jwsAlgorithm(SignatureAlgorithm.ES256)
+					.build();
 			decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer.trim()));
 			return decoder;
 		}

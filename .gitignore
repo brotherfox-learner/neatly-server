@@ -34,3 +34,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+sv/
+
+supabase-rls-anon-room-read.sql
+supabase-seed-mock.sql
