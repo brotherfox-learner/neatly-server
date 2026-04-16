@@ -159,7 +159,7 @@ public class ChatBotService {
 			// Get primary image
 			List<RoomTypeImage> images = roomTypeImageRepository.findByRoomType_IdOrderBySortOrderAsc(rt.getId());
 			String imageUrl = images.stream()
-					.filter(RoomTypeImage::getIsPrimary)
+					.filter(img -> Boolean.TRUE.equals(img.getPrimary()))
 					.findFirst()
 					.or(() -> images.stream().findFirst())
 					.map(RoomTypeImage::getImageUrl)
@@ -235,7 +235,7 @@ public class ChatBotService {
 		return faqRepository.findByCategoryAndIsActiveTrueOrderBySortOrder("preset").stream()
 				.filter(f -> "promotion_cards".equals(f.getResponseType()))
 				.findFirst()
-				.map(this::getPresetAnswer)
+				.map((Faq f) -> getPresetAnswer(f.getId()))
 				.orElseGet(this::buildPromotionCardsAnswerStandalone);
 	}
 
